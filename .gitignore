@@ -1,0 +1,39 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+server/public
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+
+# Deployment files
+windsurf_deployment.yaml
+.netlify
+
+# IDE and OS files
+.DS_Store
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+vite.config.ts.*
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+*.tar.gz
+.cache/
+.local/
+
