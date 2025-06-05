@@ -4,7 +4,7 @@ const serverless = require('serverless-http');
 const path = require('path');
 const { createServer } = require('http');
 const { WebSocketServer } = require('ws');
-const { registerRoutes } = require('../dist/index.js');
+const { registerRoutes } = require('../../dist/index.js');
 
 const app = express();
 app.use(express.json());
