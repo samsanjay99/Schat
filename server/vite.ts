@@ -77,12 +77,36 @@ export function serveStatic(app: Express) {
   console.log("Static files path:", distPath);
   
   if (!fs.existsSync(distPath)) {
+    console.error(`Build directory not found: ${distPath}`);
     throw new Error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`,
     );
   }
+  
+  // Log the contents of the dist/public directory to help debug
+  try {
+    const files = fs.readdirSync(distPath);
+    console.log("Files in dist/public:", files);
+    
+    // Check if assets directory exists
+    const assetsPath = path.join(distPath, "assets");
+    if (fs.existsSync(assetsPath)) {
+      const assetFiles = fs.readdirSync(assetsPath);
+      console.log("Files in assets directory:", assetFiles);
+    } else {
+      console.log("Assets directory not found");
+    }
+  } catch (err) {
+    console.error("Error listing directory:", err);
+  }
 
   app.use(express.static(distPath));
+  
+  // Add a special route for CSS files
+  app.get("/*.css", (req, res, next) => {
+    console.log("CSS file requested:", req.path);
+    next();
+  });
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
