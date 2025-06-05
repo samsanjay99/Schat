@@ -21,11 +21,15 @@ export default defineConfig({
     },
   },
   root: path.resolve(projectRoot, "client"),
+  publicDir: path.resolve(projectRoot, "client", "public"),
   build: {
     outDir: path.resolve(projectRoot, "dist/public"),
     emptyOutDir: true,
     cssCodeSplit: true,
     sourcemap: true,
+  },
+  css: {
+    postcss: {},
   },
   logLevel: 'info',
 });
