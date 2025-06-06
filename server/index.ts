@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import http from "http";
-import { serveStatic, setupVite } from "./vite";
+import { setupVite } from "./vite";
 import { registerRoutes } from "./routes";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -20,6 +20,22 @@ async function main() {
     app.use(express.json());
     app.use(express.urlencoded({ extended: false }));
 
+    // Setup frontend serving (Vite dev server or static files)
+    // This comes after API routes so they take precedence
+    if (IS_PRODUCTION) {
+      console.log("Setting up production static file serving");
+      
+      const distPath = path.resolve(__dirname, "..", "dist", "public");
+      console.log("Production: Serving static files from:", distPath);
+
+      if (fs.existsSync(distPath)) {
+        app.use(express.static(distPath));
+        console.log("Serving static assets from", distPath);
+      } else {
+        console.error(`FATAL: Build directory not found: ${distPath}.`);
+      }
+    }
+    
     // Register all API routes and get the server instance (which includes WebSocket setup)
     // This must happen before Vite/static serving setup
     const server = await registerRoutes(app);
@@ -35,8 +51,17 @@ async function main() {
     // Setup frontend serving (Vite dev server or static files)
     // This comes after API routes so they take precedence
     if (IS_PRODUCTION) {
-      console.log("Setting up production static file serving");
-      serveStatic(app);
+      const indexPath = path.resolve(__dirname, "..", "dist", "public", "index.html");
+      if (fs.existsSync(indexPath)) {
+        app.get("*", (req, res) => {
+          if (!req.path.startsWith('/api/')) {
+            res.sendFile(indexPath);
+          }
+        });
+        console.log("SPA fallback configured to serve", indexPath);
+      } else {
+        console.error(`FATAL: index.html not found at: ${indexPath}.`);
+      }
     } else {
       console.log("Setting up development server with Vite");
       await setupVite(app, server);

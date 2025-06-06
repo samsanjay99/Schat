@@ -71,98 +71,59 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
-export function serveStatic(app: Express) {
+export function servePublicAssets(app: Express) {
   try {
     const distPath = path.resolve(__dirname, "..", "dist", "public");
-    
-    console.log("Static files path:", distPath);
-    
-    // Create directories if they don't exist
-    try {
-      if (!fs.existsSync(distPath)) {
-        fs.mkdirSync(distPath, { recursive: true });
-        console.log("Created missing dist/public directory");
-      }
-    } catch (err) {
-      console.error("Error creating directories:", err);
+    console.log("Production: Serving static files from:", distPath);
+
+    if (!fs.existsSync(distPath)) {
+      console.error(
+        `FATAL: Build directory not found: ${distPath}. Make sure the client has been built successfully.`
+      );
+      return;
     }
-    
-    // Copy static.css to the dist directory if it exists
-    try {
-      const staticCssSource = path.resolve(__dirname, "..", "client", "src", "static.css");
-      const staticCssTarget = path.resolve(distPath, "src");
-      
-      if (fs.existsSync(staticCssSource)) {
-        if (!fs.existsSync(staticCssTarget)) {
-          fs.mkdirSync(staticCssTarget, { recursive: true });
-        }
-        fs.copyFileSync(staticCssSource, path.resolve(staticCssTarget, "static.css"));
-        console.log("Copied static.css to dist directory");
-      } else {
-        console.error("static.css source file not found:", staticCssSource);
-      }
-    } catch (err) {
-      console.error("Error copying static.css:", err);
-    }
-    
-    // Log the contents of the dist/public directory to help debug
+
     try {
       const files = fs.readdirSync(distPath);
       console.log("Files in dist/public:", files);
-      
-      // Check if src directory exists
-      const srcPath = path.join(distPath, "src");
-      if (fs.existsSync(srcPath)) {
-        const srcFiles = fs.readdirSync(srcPath);
-        console.log("Files in src directory:", srcFiles);
+      if (files.includes("static.css")) {
+        console.log("Found static.css in dist/public.");
       } else {
-        console.log("src directory not found");
+        console.warn("WARNING: static.css NOT found in dist/public.");
       }
     } catch (err) {
-      console.error("Error listing directory:", err);
+      console.error("Error listing dist/public directory contents:", err);
     }
 
-    // Serve static files with error handling
     app.use(express.static(distPath, {
-      fallthrough: true,
-      setHeaders: (res) => {
-        res.setHeader('Cache-Control', 'no-cache');
-      }
+      setHeaders: (res, filePath) => {
+        if (path.extname(filePath) === ".css") {
+          res.setHeader("Cache-Control", "public, max-age=31536000");
+        }
+      },
     }));
-    
-    // Special handler for static.css
-    app.get('/src/static.css', (req, res) => {
-      try {
-        const cssPath = path.resolve(distPath, 'src', 'static.css');
-        if (fs.existsSync(cssPath)) {
-          res.setHeader('Content-Type', 'text/css');
-          fs.createReadStream(cssPath).pipe(res);
-        } else {
-          console.error('static.css file not found at:', cssPath);
-          res.status(404).send('CSS file not found');
-        }
-      } catch (err) {
-        console.error('Error serving static.css:', err);
-        res.status(500).send('Error serving CSS file');
-      }
-    });
+  } catch (err) {
+    console.error("Error in servePublicAssets setup:", err);
+  }
+}
 
-    // fall through to index.html if the file doesn't exist
+export function serveSpaFallback(app: Express) {
+  try {
+    const indexPath = path.resolve(__dirname, "..", "dist", "public", "index.html");
+    if (!fs.existsSync(indexPath)) {
+      console.error(
+        `FATAL: index.html not found at: ${indexPath}. Cannot serve SPA.`
+      );
+      app.use("*", (_req, res) => {
+        res.status(404).send("Application not found. Missing index.html.");
+      });
+      return;
+    }
+
     app.use("*", (_req, res) => {
-      try {
-        const indexPath = path.resolve(distPath, "index.html");
-        if (fs.existsSync(indexPath)) {
-          res.sendFile(indexPath);
-        } else {
-          console.error("index.html not found at:", indexPath);
-          res.status(404).send("Page not found");
-        }
-      } catch (err) {
-        console.error("Error serving index.html:", err);
-        res.status(500).send("Internal server error");
-      }
+      res.sendFile(indexPath);
     });
   } catch (err) {
-    console.error("Error in serveStatic:", err);
+    console.error("Error in serveSpaFallback setup:", err);
   }
 }
